@@ -9,7 +9,6 @@ import html
 from datetime import datetime, timezone
 from botocore.exceptions import ClientError, BotoCoreError
 
-
 # ============================================================
 # CONFIGURATION
 # ============================================================
@@ -18,17 +17,14 @@ TABLE_NAME = os.environ.get(
     "TABLE_NAME",
     "backend-dynamodb-table"
 )
-
 BUCKET_NAME = os.environ.get(
     "BUCKET_NAME",
     "backend-s3-bucket777"
 )
-
 ADMIN_EMAIL = os.environ.get(
     "ADMIN_EMAIL",
     "ebotsmith@gmail.com"
 )
-
 REGION = os.environ.get(
     "REGION",
     "us-east-2"
@@ -42,7 +38,6 @@ REGION = os.environ.get(
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-
 # ============================================================
 # AWS CLIENTS
 # ============================================================
@@ -51,33 +46,25 @@ dynamodb = boto3.resource(
     "dynamodb",
     region_name=REGION
 )
-
 s3 = boto3.client(
     "s3",
     region_name=REGION
 )
-
 ses = boto3.client(
     "ses",
     region_name=REGION
 )
-
 table = dynamodb.Table(TABLE_NAME)
-
 
 # ============================================================
 # RESPONSE HELPER
 # ============================================================
-
 def response(status_code, message, extra=None):
-
     result = {
         "message": message
     }
-
     if extra:
         result.update(extra)
-
     return {
         "statusCode": status_code,
         "headers": {
@@ -89,42 +76,28 @@ def response(status_code, message, extra=None):
         "body": json.dumps(result)
     }
 
-
 # ============================================================
 # REQUEST BODY PARSER
 # ============================================================
-
 def parse_request_body(event):
-
     raw_body = event.get("body")
-
     if raw_body is None:
-
         # Support direct Lambda test events
         if "name" in event and "email" in event:
             return event
-
         raise ValueError("Request body is missing.")
-
     if event.get("isBase64Encoded"):
-
         raw_body = base64.b64decode(raw_body).decode("utf-8")
-
     if isinstance(raw_body, dict):
         return raw_body
-
     return json.loads(raw_body)
-
 
 # ============================================================
 # PDF UPLOAD TO S3
 # ============================================================
-
 def upload_pdf(file_base64, feedback_id):
-
     if not file_base64:
         return None
-
     # Remove the data URI prefix if present
     encoded_file = file_base64.split(",")[-1]
 
@@ -148,7 +121,6 @@ def upload_pdf(file_base64, feedback_id):
         Body=pdf_data,
         ContentType="application/pdf"
     )
-
     logger.info("PDF successfully uploaded to S3: %s", key)
 
     # Generate a presigned URL valid for 24 hours
@@ -160,14 +132,11 @@ def upload_pdf(file_base64, feedback_id):
         },
         ExpiresIn=86400
     )
-
     return file_url
-
 
 # ============================================================
 # SAVE FEEDBACK TO DYNAMODB
 # ============================================================
-
 def save_feedback(
     feedback_id,
     name,
@@ -175,7 +144,6 @@ def save_feedback(
     message,
     file_url
 ):
-
     item = {
         # IMPORTANT:
         # This must match your DynamoDB partition key.
@@ -187,22 +155,18 @@ def save_feedback(
         "file_url": file_url,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
-
     table.put_item(
         Item=item,
         ConditionExpression="attribute_not_exists(backend_id)"
     )
-
     logger.info(
         "Feedback successfully saved to DynamoDB: %s",
         feedback_id
     )
 
-
 # ============================================================
 # SEND EMAIL NOTIFICATION USING SES
 # ============================================================
-
 def send_admin_email(
     feedback_id,
     name,
@@ -210,15 +174,12 @@ def send_admin_email(
     message,
     file_url
 ):
-
     safe_name = html.escape(name)
     safe_email = html.escape(email)
     safe_message = html.escape(message).replace("\n", "<br>")
 
     attachment_html = ""
-
     if file_url:
-
         attachment_html = f"""
         <tr>
             <td><strong>Attachment</strong></td>
@@ -242,7 +203,6 @@ def send_admin_email(
                 background-color: #f1f5f9;
                 padding: 30px;
             }}
-
             .container {{
                 max-width: 600px;
                 margin: auto;
@@ -273,29 +233,22 @@ def send_admin_email(
             }}
         </style>
     </head>
-
     <body>
         <div class="container">
-
             <h2>New Feedback Received</h2>
-
             <table>
-
                 <tr>
                     <td><strong>Feedback ID</strong></td>
                     <td>{html.escape(feedback_id)}</td>
                 </tr>
-
                 <tr>
                     <td><strong>Name</strong></td>
                     <td>{safe_name}</td>
                 </tr>
-
                 <tr>
                     <td><strong>Email</strong></td>
                     <td>{safe_email}</td>
                 </tr>
-
                 <tr>
                     <td><strong>Message</strong></td>
                     <td>{safe_message}</td>
@@ -304,12 +257,10 @@ def send_admin_email(
                 {attachment_html}
 
             </table>
-
             <div class="footer">
                 This email was automatically sent
                 from your feedback application.
             </div>
-
         </div>
     </body>
     </html>
@@ -325,22 +276,18 @@ def send_admin_email(
 
     PDF Attachment: {file_url or "No attachment"}
     """
-
     ses.send_email(
         Source=ADMIN_EMAIL,
-
         Destination={
             "ToAddresses": [
                 ADMIN_EMAIL
             ]
         },
-
         Message={
             "Subject": {
                 "Data": "New Feedback Received",
                 "Charset": "UTF-8"
             },
-
             "Body": {
                 "Text": {
                     "Data": text_body,
@@ -357,11 +304,9 @@ def send_admin_email(
 
     logger.info("Feedback notification email sent.")
 
-
 # ============================================================
 # MAIN LAMBDA HANDLER
 # ============================================================
-
 def lambda_handler(event, context):
 
     logger.info("Feedback Lambda function started.")
@@ -371,7 +316,6 @@ def lambda_handler(event, context):
     # --------------------------------------------------------
 
     request_context = event.get("requestContext", {})
-
     http_method = (
         event.get("httpMethod")
         or request_context.get("http", {}).get("method")
@@ -379,7 +323,6 @@ def lambda_handler(event, context):
     ).upper()
 
     if http_method == "OPTIONS":
-
         return response(
             200,
             "CORS preflight request successful."
@@ -425,16 +368,13 @@ def lambda_handler(event, context):
         # ----------------------------------------------------
         # 6. Upload PDF attachment to S3
         # ----------------------------------------------------
-
         file_url = upload_pdf(
             file_base64,
             feedback_id
         )
-
         # ----------------------------------------------------
         # 7. Save feedback to DynamoDB
         # ----------------------------------------------------
-
         save_feedback(
             feedback_id,
             name,
@@ -446,11 +386,8 @@ def lambda_handler(event, context):
         # ----------------------------------------------------
         # 8. Send notification email using SES
         # ----------------------------------------------------
-
         email_sent = True
-
         try:
-
             send_admin_email(
                 feedback_id,
                 name,
@@ -460,19 +397,15 @@ def lambda_handler(event, context):
             )
 
         except (ClientError, BotoCoreError) as email_error:
-
             email_sent = False
-
             # Log email error without failing saved feedback
             logger.exception(
                 "Feedback saved, but SES email failed: %s",
                 email_error
             )
-
         # ----------------------------------------------------
         # 9. Return successful response
         # ----------------------------------------------------
-
         return response(
             200,
             "Feedback submitted successfully.",
@@ -481,36 +414,27 @@ def lambda_handler(event, context):
                 "email_notification_sent": email_sent
             }
         )
-
     except ValueError as error:
-
         logger.warning(
             "Invalid feedback request: %s",
             error
         )
-
         return response(
             400,
             str(error)
         )
-
     except (ClientError, BotoCoreError) as error:
-
         logger.exception(
             "AWS service operation failed."
         )
-
         return response(
             500,
             "An AWS service operation failed. Check the Lambda logs."
         )
-
     except Exception:
-
         logger.exception(
             "Unexpected Lambda error."
         )
-
         return response(
             500,
             "Internal server error. Check the Lambda logs."
