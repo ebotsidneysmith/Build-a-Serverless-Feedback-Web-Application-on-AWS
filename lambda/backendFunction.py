@@ -8,8 +8,8 @@ import uuid  # To generate unique feedback IDs
 # Configurable variables with defaults from environment variables
 TABLE_NAME = os.environ.get('TABLE_NAME', 'Feedback-Kobina')  # DynamoDB Table name for storing feedback
 BUCKET_NAME = os.environ.get('BUCKET_NAME', 'feedback-images-kobbyjust')  # S3 bucket name for storing feedback attachments
-ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'sagarinokoeaws1@gmail.com')  # Admin email to receive notifications
-REGION = os.environ.get('REGION', 'us-east-1')  # AWS region for resources
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'ebotsmith@gmail.com')  # Admin email to receive notifications
+REGION = os.environ.get('REGION', 'us-east-2')  # AWS region for resources
 
 # Initialize AWS clients
 dynamodb = boto3.resource('dynamodb', region_name=REGION)  # DynamoDB client to interact with the database
